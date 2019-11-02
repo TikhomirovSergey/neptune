@@ -24,6 +24,7 @@ import static ru.tinkoff.qa.neptune.http.api.properties.DefaultHttpDomainToRespo
 /**
  * It builds a function that prepare a {@link HttpRequest} to get a response further.
  */
+@Deprecated
 public class PreparedHttpRequest {
 
     private final HttpRequest.Builder builder;

@@ -25,6 +25,7 @@ import static ru.tinkoff.qa.neptune.http.api.properties.TimeToSleepProperty.SLEE
  * Utility class to build functions that get data from http body response. These functions return iterables/arrays.
  * Built functions sends requests till desired response is received or waiting time is expired.
  */
+@Deprecated
 public final class HttpGetObjectsFromResponseBody {
 
     private HttpGetObjectsFromResponseBody() {

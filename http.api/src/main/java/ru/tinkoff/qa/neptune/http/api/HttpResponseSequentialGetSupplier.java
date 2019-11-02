@@ -25,6 +25,7 @@ import static ru.tinkoff.qa.neptune.core.api.steps.StoryWriter.condition;
  */
 @MakeStringCapturesOnFinishing
 @MakeFileCapturesOnFinishing
+@Deprecated
 public class HttpResponseSequentialGetSupplier<T> extends SequentialGetStepSupplier
         .GetObjectStepSupplier<HttpStepContext, HttpResponse<T>, HttpResponseSequentialGetSupplier<T>> implements Cloneable {
 
