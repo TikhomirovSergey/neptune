@@ -162,4 +162,8 @@ public abstract class RequestBuilder {
         builder.setHeader(name, value);
         return this;
     }
+
+    public HttpRequest build() {
+        return builder.build();
+    }
 }
