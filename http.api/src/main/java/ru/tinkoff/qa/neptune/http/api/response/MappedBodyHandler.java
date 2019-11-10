@@ -47,26 +47,75 @@ public class MappedBodyHandler<S, T> implements HttpResponse.BodyHandler<T> {
         return new MappedBodyHandler<>(upstreamBodyHandler, mapper);
     }
 
+    /**
+     * Creates a new body handler to convert a response body to an object deserialized by {@link com.google.gson.Gson}.
+     * It is considered that response has a body of json format.
+     *
+     * @param toReturn is a class of an object to be deserialized from json
+     * @param builder an instance of {@link GsonBuilder}
+     * @param <T> is a type of an object to be deserialized from json
+     * @return a new {@link MappedBodyHandler}
+     */
     public static <T> MappedBodyHandler<String, T> json(Class<T> toReturn, GsonBuilder builder) {
         return mapped(ofString(), getFromJson(toReturn, builder));
     }
 
+    /**
+     * Creates a new body handler to convert a response body to an object deserialized by {@link com.google.gson.Gson}.
+     * It is considered that response has a body of json format.
+     *
+     * @param toReturn is a class of an object to be deserialized from json
+     * @param <T> is a type of an object to be deserialized from json
+     * @return a new {@link MappedBodyHandler}
+     */
     public static <T> MappedBodyHandler<String, T> json(Class<T> toReturn) {
         return mapped(ofString(), getFromJson(toReturn));
     }
 
+    /**
+     * Creates a new body handler to convert a response body to a {@link org.w3c.dom.Document}.
+     * It is considered that response has a body of xml or html format.
+     *
+     * @param documentBuilder an instance of {@link DocumentBuilder}
+     * @return a new {@link MappedBodyHandler}
+     */
     public static MappedBodyHandler<String, org.w3c.dom.Document> document(DocumentBuilder documentBuilder) {
         return mapped(ofString(), getDocument(documentBuilder));
     }
 
+    /**
+     * Creates a new body handler to convert a response body to a {@link org.jsoup.nodes.Document}.
+     * It is considered that response has a body of xml or html format.
+     *
+     * @return a new {@link MappedBodyHandler}
+     */
     public static MappedBodyHandler<String, org.jsoup.nodes.Document> document() {
         return mapped(ofString(), getDocument());
     }
 
+    /**
+     * Creates a new body handler to convert a response body to an object deserialized by {@link ObjectMapper}
+     * It is considered that response has a body of xml/json/any other format readable by defined object of
+     * {@link ObjectMapper}.
+     *
+     * @param toReturn is a class of an object to be deserialized from the response body
+     * @param mapper is an instance of {@link ObjectMapper}
+     * @param <T> is a type of an object to be deserialized from the response body
+     * @return a new {@link MappedBodyHandler}
+     */
     public static <T> MappedBodyHandler<String, T> mappedByJackson(Class<T> toReturn, ObjectMapper mapper) {
         return mapped(ofString(), getMapped(toReturn, mapper));
     }
 
+    /**
+     * Creates a new body handler to convert a response body to an object deserialized by {@link ObjectMapper}
+     * It is considered that response has a body of xml/json/any other format readable by by default object of
+     * {@link ObjectMapper}.
+     *
+     * @param toReturn is a class of an object to be deserialized from the response body
+     * @param <T> is a type of an object to be deserialized from the response body
+     * @return a new {@link MappedBodyHandler}
+     */
     public static <T> MappedBodyHandler<String, T> mappedByJackson(Class<T> toReturn) {
         return mapped(ofString(), getMapped(toReturn));
     }
