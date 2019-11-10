@@ -8,6 +8,7 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 
+import static java.lang.String.valueOf;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.glassfish.jersey.internal.guava.Preconditions.checkArgument;
 
@@ -165,5 +166,10 @@ public abstract class RequestBuilder {
 
     public HttpRequest build() {
         return builder.build();
+    }
+
+    @Override
+    public String toString() {
+        return valueOf(builder.build());
     }
 }
