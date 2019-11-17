@@ -17,6 +17,7 @@ import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Objects.nonNull;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.ArrayUtils.add;
+import static ru.tinkoff.qa.neptune.data.base.api.queries.jdoql.WhereJunction.and;
 
 /**
  * This class is designed to construct/detail {@link JDOQLTypedQuery}
@@ -63,36 +64,42 @@ public abstract class JDOParameters<T extends PersistableObject, Q extends Persi
     }
 
     /**
-     * Sets WHERE-clause to query. The sample below:
+     * Adds WHERE-clause to query. The sample below:
      * <p>
      * {@code byJDOQuery(QPerson.class)
-     *          .where(qPerson -> qPerson.name.eq(desiredName))}
+     *          .addWhere(qPerson -> qPerson.name.eq(desiredName))}
      * </p>
-     * @param whereExpression is a function that returns a {@link BooleanExpression}
+     *
+     * It is possible to define several expressions. The sample below demonstrates how define few expressions
+     * aggregated by AND-junction:
+     * <p>
+     * {@code byJDOQuery(QPerson.class)
+     *          .addWhere(qPerson -> qPerson.name.eq(desiredName))
+     *          .addWhere(qPerson -> qPerson.age.gt(age))
+     *          }
+     * </p>
+     *
+     * Also it is possible to use junctions.
+     * @see WhereJunction
+     * The sample below:
+     * <p>
+     * {@code byJDOQuery(QPerson.class)
+     *          .addWhere(qPerson -> or(
+     *                qPerson.name.eq(desiredName),
+     *                qPerson.age.gt(age)))
+     *                }
+     * </p>
+     *
+     * @param whereExpressions are functions that return a {@link BooleanExpression} on the applying.
      * @return self-reference
      */
-    public S where(Function<Q, BooleanExpression> whereExpression) {
-        checkArgument(nonNull(whereExpression), "Where-expression should be defined as not a null value");
-        var where = whereExpression.apply(persistableExpression);
-        checkNotNull(where);
-        this.where = where;
-        return (S) this;
-    }
+    public final S addWhere(Function<Q, BooleanExpression> whereExpressions) {
+        checkArgument(nonNull(whereExpressions), "Where-expression should be defined as not a null value");
+        var whereExpr = whereExpressions.apply(persistableExpression);
+        checkNotNull(whereExpr, "A new added `where` is null");
 
-    /**
-     * Sets ORDER BY-clause to query. The sample below:
-     * <p>
-     * {@code byJDOQuery(QPerson.class)
-     *          .setOrderBy(qPerson -> qPerson.id.asc())}
-     * </p>
-     * @param orderExpression is a function that returns a {@link OrderExpression}
-     * @return self-reference
-     */
-    public S setOrderBy(Function<Q, OrderExpression<?>> orderExpression) {
-        checkArgument(nonNull(orderExpression), "Order expression should be defined as not a null value");
-        var orderBy = orderExpression.apply(persistableExpression);
-        checkNotNull(orderBy);
-        this.orderExpressions = new OrderExpression[] {orderBy};
+        this.where = ofNullable(this.where).map(booleanExpression -> and(booleanExpression, whereExpr))
+                .orElse(whereExpr);
         return (S) this;
     }
 
@@ -100,13 +107,13 @@ public abstract class JDOParameters<T extends PersistableObject, Q extends Persi
      * Adds ORDER BY-clause to query. The sample below:
      * <p>
      * {@code byJDOQuery(QPerson.class)
-     *          .addOrderBy(qPerson -> qPerson.id.asc())
-     *          .addOrderBy(qPerson -> qPerson.birthDay.asc())}
+     *          .orderBy(qPerson -> qPerson.id.asc())
+     *          .orderBy(qPerson -> qPerson.birthDay.asc())}
      * </p>
      * @param orderExpression is a function that returns a {@link OrderExpression}
      * @return self-reference
      */
-    public S  addOrderBy(Function<Q, OrderExpression<?>> orderExpression) {
+    public S orderBy(Function<Q, OrderExpression<?>> orderExpression) {
         checkArgument(nonNull(orderExpression), "Order expression should be defined as not a null value");
         var orderBy = orderExpression.apply(persistableExpression);
         checkNotNull(orderBy);
