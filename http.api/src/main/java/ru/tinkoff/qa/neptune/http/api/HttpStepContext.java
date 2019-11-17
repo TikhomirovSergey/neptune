@@ -5,11 +5,16 @@ import ru.tinkoff.qa.neptune.core.api.steps.context.ActionStepContext;
 import ru.tinkoff.qa.neptune.core.api.steps.context.CreateWith;
 import ru.tinkoff.qa.neptune.core.api.steps.context.GetStepContext;
 import ru.tinkoff.qa.neptune.http.api.request.RequestBuilder;
-import ru.tinkoff.qa.neptune.http.api.response.GetHttpResponseStatus;
+import ru.tinkoff.qa.neptune.http.api.response.*;
 
+import javax.net.ssl.SSLSession;
 import java.net.CookieManager;
+import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
@@ -75,5 +80,29 @@ public class HttpStepContext implements GetStepContext<HttpStepContext>, ActionS
      */
     public Integer httpStatusCodeOf(RequestBuilder requestBuilder) {
         return get(GetHttpResponseStatus.httpStatusCodeOf(requestBuilder));
+    }
+
+    public HttpRequest correspondingHttpRequestOf(RequestBuilder requestBuilder) {
+        return get(GetHttpCorrespondingRequest.correspondingHttpRequestOf(requestBuilder));
+    }
+
+    public HttpResponse<?> previousHttpResponseOf(RequestBuilder requestBuilder) {
+        return get(GetHttpPreviousResponse.previousHttpResponseOf(requestBuilder));
+    }
+
+    public Map<String, List<String>> httpHeadersOf(RequestBuilder requestBuilder) {
+        return get(GetHttpHeaders.httpHeadersOf(requestBuilder));
+    }
+
+    public URI httpResponseURIOf(RequestBuilder requestBuilder) {
+        return get(GetHttpResponseURI.httpResponseURIOf(requestBuilder));
+    }
+
+    public SSLSession httpSslSessionOf(RequestBuilder requestBuilder) {
+        return get(GetHttpSslSession.httpSslSessionOf(requestBuilder));
+    }
+
+    public HttpClient.Version httProtocolVersionOf(RequestBuilder requestBuilder) {
+        return get(GetHttpVersion.httProtocolVersionOf(requestBuilder));
     }
 }

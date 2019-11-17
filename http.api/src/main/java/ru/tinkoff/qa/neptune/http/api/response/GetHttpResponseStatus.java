@@ -11,12 +11,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
 
 /**
- *  Designed to create an instance that retries status code of an http response.
+ *  Designed to create an instance that retrieves status code of http response.
  *
  * @param <T> is a type of an input object that used to get value of http response status code.
  */
 @MakeCaptureOnFinishing(typeOfCapture = Object.class)
-public class GetHttpResponseStatus<T> extends SequentialGetStepSupplier
+public final class GetHttpResponseStatus<T> extends SequentialGetStepSupplier
         .GetObjectChainedStepSupplier<T, Integer, HttpResponse<?>, GetHttpResponseStatus<T>> {
 
     private GetHttpResponseStatus(String description) {
@@ -39,8 +39,8 @@ public class GetHttpResponseStatus<T> extends SequentialGetStepSupplier
     }
 
     /**
-     * Retrieves status code of a http response.
-     *      *
+     * Retrieves status code of the http response.
+     *
      * @param response than already received
      * @return a value of status code
      */
