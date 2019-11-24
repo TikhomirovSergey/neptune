@@ -13,16 +13,19 @@ import ru.tinkoff.qa.neptune.data.base.api.queries.ids.Ids;
 import ru.tinkoff.qa.neptune.data.base.api.queries.jdoql.JDOQLQueryParameters;
 import ru.tinkoff.qa.neptune.data.base.api.queries.jdoql.JDOQLResultQueryParams;
 import ru.tinkoff.qa.neptune.data.base.api.queries.jdoql.ReadableJDOQuery;
+import ru.tinkoff.qa.neptune.data.base.api.result.TableResultList;
 
 import javax.jdo.query.PersistableExpression;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
+import static java.lang.String.valueOf;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static ru.tinkoff.qa.neptune.core.api.steps.StoryWriter.toGet;
@@ -42,11 +45,11 @@ import static ru.tinkoff.qa.neptune.data.base.api.queries.sql.SqlQuery.bySql;
  */
 @MakeFileCapturesOnFinishing
 @MakeStringCapturesOnFinishing
-public class SelectList<T, M> extends SequentialGetStepSupplier
-        .GetIterableChainedStepSupplier<DataBaseStepContext, List<T>, M, T, SelectList<T, M>> {
+public class SelectList<T, R extends List<T>, M> extends SequentialGetStepSupplier
+        .GetIterableChainedStepSupplier<DataBaseStepContext, R, M, T, SelectList<T, R, M>> {
 
     private SelectList(String description,
-                       Function<M, List<T>> originalFunction) {
+                       Function<M, R> originalFunction) {
         super(description, originalFunction);
         timeOut(WAITING_FOR_SELECTION_RESULT_TIME.get());
         pollingInterval(SLEEPING_TIME.get());
@@ -61,9 +64,9 @@ public class SelectList<T, M> extends SequentialGetStepSupplier
      * @param <Q>      is a type of {@link PersistableExpression} that represents {@code T} in query
      * @return new {@link SelectList}
      */
-    public static <R extends PersistableObject, Q extends PersistableExpression<R>> SelectList<R, ReadableJDOQuery<R>> listOf(Class<R> toSelect,
-                                                                                                                              JDOQLQueryParameters<R, Q> params) {
-        return new SelectList<R, ReadableJDOQuery<R>>(format("List of %s by JDO typed query", toSelect.getName()),
+    public static <R extends PersistableObject, Q extends PersistableExpression<R>> SelectList<R, List<R>, ReadableJDOQuery<R>> listOf(Class<R> toSelect,
+                                                                                                                                       JDOQLQueryParameters<R, Q> params) {
+        return new SelectList<R, List<R>, ReadableJDOQuery<R>>(format("List of %s by JDO typed query", toSelect.getName()),
                 byJDOQLQuery()) {
             protected Function<ReadableJDOQuery<R>, List<R>> getEndFunction() {
                 //TODO such implementation is for advanced reporting
@@ -89,11 +92,12 @@ public class SelectList<T, M> extends SequentialGetStepSupplier
      * @param <Q>          is a type of {@link PersistableExpression} that represents {@code T} in query
      * @return new {@link SelectList}
      */
-    public static <R extends PersistableObject, Q extends PersistableExpression<R>> SelectList<List<Object>, ReadableJDOQuery<R>> rows(Class<R> toSelectFrom,
-                                                                                                                                       JDOQLResultQueryParams<R, Q> params) {
-        return new SelectList<List<Object>, ReadableJDOQuery<R>>(format("Rows taken from %s by JDO query", toSelectFrom.getName()),
+    public static <R extends PersistableObject, Q extends PersistableExpression<R>> SelectList<List<Object>, TableResultList, ReadableJDOQuery<R>>
+    rows(Class<R> toSelectFrom,
+         JDOQLResultQueryParams<R, Q> params) {
+        return new SelectList<List<Object>, TableResultList, ReadableJDOQuery<R>>(format("Rows taken from %s by JDO query", toSelectFrom.getName()),
                 byJDOQLResultQuery()) {
-            protected Function<ReadableJDOQuery<R>, List<List<Object>>> getEndFunction() {
+            protected Function<ReadableJDOQuery<R>, TableResultList> getEndFunction() {
                 //TODO such implementation is for advanced reporting
                 //TODO jdo query should be turned into step parameter in a report
                 //TODO comment for further releases
@@ -115,7 +119,7 @@ public class SelectList<T, M> extends SequentialGetStepSupplier
      * @param <R>      is a type of each {@link PersistableObject} from returned list
      * @return new {@link SelectList}
      */
-    public static <R extends PersistableObject> SelectList<R, ReadableJDOQuery<R>> listOf(Class<R> toSelect) {
+    public static <R extends PersistableObject> SelectList<R, List<R>, ReadableJDOQuery<R>> listOf(Class<R> toSelect) {
         return listOf(toSelect, (JDOQLQueryParameters<R, PersistableExpression<R>>) null);
     }
 
@@ -127,8 +131,8 @@ public class SelectList<T, M> extends SequentialGetStepSupplier
      * @param <R>      is a type of each {@link PersistableObject} from returned list
      * @return new {@link SelectList}
      */
-    public static <R extends PersistableObject> SelectList<R, JDOPersistenceManager> listOf(Class<R> toSelect,
-                                                                                            Ids ids) {
+    public static <R extends PersistableObject> SelectList<R, List<R>, JDOPersistenceManager> listOf(Class<R> toSelect,
+                                                                                                     Ids ids) {
         //TODO ids should be turned into step parameter in a report
         //TODO comment for further releases
         return new SelectList<>(format("List of %s by ids %s",
@@ -142,21 +146,19 @@ public class SelectList<T, M> extends SequentialGetStepSupplier
      * Retrieves a list of  {@link PersistableObject} selected by sql-query.
      *
      * @param toSelect   is a class of each {@link PersistableObject} from returned list
-     *
      * @param sql        is an sql query. Parameter mask ({@code ?}) is supported. It is important!:
      *                   <p>Sql query should be defined as below</p>
      *                   {@code 'Select * from Persons...'}
-     *
      * @param parameters is an array of query parameters. It is necessary to define for queries as below
      *                   <p>
      *                   {@code 'Select * from Persons where Some_Field=?'}
      *                   </p>
-     * @param <R>      is a type of each {@link PersistableObject} from returned list
+     * @param <R>        is a type of each {@link PersistableObject} from returned list
      * @return new {@link SelectList}
      */
-    public static <R extends PersistableObject> SelectList<R, JDOPersistenceManager> listOf(Class<R> toSelect,
-                                                                                            String sql,
-                                                                                            Object... parameters) {
+    public static <R extends PersistableObject> SelectList<R, List<R>, JDOPersistenceManager> listOf(Class<R> toSelect,
+                                                                                                     String sql,
+                                                                                                     Object... parameters) {
         //TODO sql + parameters should be turned into step parameters in a report
         //TODO comment for further releases
         return new SelectList<>(format("List of %s by query '%s'. " +
@@ -169,21 +171,49 @@ public class SelectList<T, M> extends SequentialGetStepSupplier
     }
 
     /**
+     * Retrieves a list of  {@link PersistableObject} selected by sql-query.
+     *
+     * @param toSelect   is a class of each {@link PersistableObject} from returned list
+     * @param sql        is an sql query. Parameter naming is supported. It is important!:
+     *                   <p>Sql query should be defined as below</p>
+     *                   {@code 'Select * from Persons...'}
+     * @param parameters is a map of parameter names and values. It is necessary to define for queries as below
+     *                   <p>
+     *                   {@code 'Select * from Persons where Some_Field=:paramName'}
+     *                   </p>
+     * @param <R>        is a type of each {@link PersistableObject} from returned list
+     * @return new {@link SelectList}
+     */
+    public static <R extends PersistableObject> SelectList<R, List<R>, JDOPersistenceManager> listOf(Class<R> toSelect,
+                                                                                                     String sql,
+                                                                                                     Map<String, ?> parameters) {
+        //TODO sql + parameters should be turned into step parameters in a report
+        //TODO comment for further releases
+        return new SelectList<>(format("List of %s by query '%s'. " +
+                        "Parameters: %s",
+                toSelect.getName(),
+                sql,
+                valueOf(parameters)),
+                bySql(toSelect, sql, parameters))
+                .from(getConnectionByClass(toSelect));
+    }
+
+    /**
      * Retrieves a list of lists. Each item is a list of raw objects taken from records of a data store. These records are selected by sql query.
      *
-     * @param sql is an sql query. Parameter mask ({@code ?}) is supported.
+     * @param sql        is an sql query. Parameter mask ({@code ?}) is supported.
      * @param connection is an  class of {@link DBConnectionSupplier} that actually describes how to connect and how to use
      *                   the data store
      * @param parameters is an array of query parameters. It is necessary to define for queries as below
      *                   <p>
      *                   {@code 'Select * from Persons where Some_Field=?'}
      *                   </p>
-     * @param <R> is a type of {@link DBConnectionSupplier}
+     * @param <R>        is a type of {@link DBConnectionSupplier}
      * @return new {@link SelectList}
      */
-    public static <R extends DBConnectionSupplier> SelectList<List<Object>, JDOPersistenceManager> rows(String sql,
-                                                                                                        Class<R> connection,
-                                                                                                        Object... parameters) {
+    public static <R extends DBConnectionSupplier> SelectList<List<Object>, TableResultList, JDOPersistenceManager> rows(String sql,
+                                                                                                                         Class<R> connection,
+                                                                                                                         Object... parameters) {
         //TODO sql + parameters should be turned into step parameters in a report
         //TODO comment for further releases
         return new SelectList<>(format("Rows by query %s. " +
@@ -196,33 +226,61 @@ public class SelectList<T, M> extends SequentialGetStepSupplier
                 .from(getConnectionBySupplierClass(connection));
     }
 
+    /**
+     * Retrieves a list of lists. Each item is a list of raw objects taken from records of a data store. These records are selected by sql query.
+     *
+     * @param sql        is an sql query. Parameter naming is supported.
+     * @param connection is an  class of {@link DBConnectionSupplier} that actually describes how to connect and how to use
+     *                   the data store
+     * @param parameters is a map of parameter names and values. It is necessary to define for queries as below
+     *                   <p>
+     *                   {@code 'Select * from Persons where Some_Field=:paramName'}
+     *                   </p>
+     * @param <R>        is a type of {@link DBConnectionSupplier}
+     * @return new {@link SelectList}
+     */
+    public static <R extends DBConnectionSupplier> SelectList<List<Object>, TableResultList, JDOPersistenceManager> rows(String sql,
+                                                                                                                         Class<R> connection,
+                                                                                                                         Map<String, ?> parameters) {
+        //TODO sql + parameters should be turned into step parameters in a report
+        //TODO comment for further releases
+        return new SelectList<>(format("Rows by query %s. " +
+                        "The connection is described by %s. " +
+                        "Parameters: %s",
+                sql,
+                connection.getName(),
+                valueOf(parameters)),
+                bySql(sql, parameters))
+                .from(getConnectionBySupplierClass(connection));
+    }
+
     @Override
-    public SelectList<T, M> timeOut(Duration timeOut) {
+    public SelectList<T, R, M> timeOut(Duration timeOut) {
         return super.timeOut(timeOut);
     }
 
     @Override
-    public SelectList<T, M> pollingInterval(Duration pollingTime) {
+    public SelectList<T, R, M> pollingInterval(Duration pollingTime) {
         return super.pollingInterval(pollingTime);
     }
 
     @Override
-    public SelectList<T, M> criteria(ConditionConcatenation concat, Predicate<? super T> condition) {
+    public SelectList<T, R, M> criteria(ConditionConcatenation concat, Predicate<? super T> condition) {
         return super.criteria(concat, condition);
     }
 
     @Override
-    public SelectList<T, M> criteria(ConditionConcatenation concat, String conditionDescription, Predicate<? super T> condition) {
+    public SelectList<T, R, M> criteria(ConditionConcatenation concat, String conditionDescription, Predicate<? super T> condition) {
         return super.criteria(concat, conditionDescription, condition);
     }
 
     @Override
-    public SelectList<T, M> criteria(Predicate<? super T> condition) {
+    public SelectList<T, R, M> criteria(Predicate<? super T> condition) {
         return super.criteria(condition);
     }
 
     @Override
-    public SelectList<T, M> criteria(String conditionDescription, Predicate<? super T> condition) {
+    public SelectList<T, R, M> criteria(String conditionDescription, Predicate<? super T> condition) {
         return super.criteria(conditionDescription, condition);
     }
 
@@ -232,7 +290,7 @@ public class SelectList<T, M> extends SequentialGetStepSupplier
      * @param errorText as a text of the thrown exception
      * @return self reference
      */
-    public SelectList<T, M> throwWhenResultEmpty(String errorText) {
+    public SelectList<T, R, M> throwWhenResultEmpty(String errorText) {
         checkArgument(isNotBlank(errorText), "Please define not blank exception text");
         return super.throwOnEmptyResult(() -> new NothingIsSelectedException(errorText));
     }
